@@ -1,5 +1,6 @@
 #!/usr/bin/env ruby
 
+require 'json'
 require 'yaml'
 require 'socket'
 require 'open3'
@@ -210,13 +211,16 @@ parser = OptionParser.new do |opts|
   opts.on('-y', '--yaml yaml_file', 'YAML that contains all the settings required') do |yaml|
     options[:yaml] = yaml
   end 
+  opts.on('-j', '--json json_file', 'JSON that contains all the settings required') do |json|
+    options[:json] = json
+  end 
   opts.on('-h', '--help', 'Displays Help') do
     puts opts
     exit
   end
 end
 parser.parse!
-if options[:yaml].nil?
+if options[:yaml].nil? && options[:json].nil?
   if options[:basedir] == nil
     print 'Enter Basedir: '
     options[:basedir] = gets.chomp
@@ -234,12 +238,14 @@ if options[:yaml].nil?
     options[:days] = gets.chomp
   end
 else
-  my_yaml = deep_symbolize(YAML.load_file(options[:yaml]))
+  my_yaml = deep_symbolize(YAML.load_file(options[:yaml])) if options[:yaml]
+  my_yaml = deep_symbolize(JSON.parse(File.read(options[:json]))) if options[:json]
   options.merge!(my_yaml) unless my_yaml.empty?
-  options[:basedir] = File.dirname(File.absolute_path(options[:yaml], Dir.pwd)) if options[:basedir] == '.' or options[:basedir].nil?
+  file_path = options[:yaml].nil? ? options[:json] : options[:yaml]
+  options[:basedir] = File.dirname(File.absolute_path(file_path, Dir.pwd)) if options[:basedir] == '.' or options[:basedir].nil?
 end
 fail("Missing file directory #{options[:basedir]}") unless File.exist?(options[:basedir])
-fail("You must use a YAML file for input if --ca true as it needs more detail (:ca_details)") if options[:ca] == true and (options[:yaml].nil? or options[:yaml].empty?)
+fail("You must use a YAML or JSON file for input if --ca true as it needs more detail (:ca_details)") if options[:ca] == true && ((options[:yaml].nil? || options[:yaml].empty?) && (options[:json].nil? || options[:json].empty?))
 options[:node_name] = options[:node_name].split(' ') if options[:node_name].is_a?(String)
 my_ca = CA_Certificate.new(
   :basedir     => options[:basedir],
