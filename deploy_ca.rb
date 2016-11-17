@@ -255,7 +255,9 @@ my_ca = CA_Certificate.new(
 my_ca.prepare_pas_wrd
 if options[:ca] == true
   fail("Missing CA details") if options[:ca_details].nil? or options[:ca_details].empty?
-  ipaddress = Socket.getaddrinfo(options[:server_name], nil, Socket::AF_UNSPEC, Socket::SOCK_STREAM, nil, Socket::AI_CANONNAME, false)[0][3]
+  socket_addr = Socket.getaddrinfo(options[:server_name], nil, Socket::AF_UNSPEC, Socket::SOCK_STREAM, nil, Socket::AI_CANONNAME, false)
+  socket_addr.keep_if { |x| x[0] == "AF_INET" }
+  ipaddress = socket_addr[0][3]
   my_ca.create_key
   my_ca.create_pem(options[:ca_details])
   my_server = Certificate.new(
